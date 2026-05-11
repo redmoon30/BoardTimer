@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmeml version="5">
+    <sequence id="13674f55-3719-4608-b38d-404a2cf82b4f">
+        <name>BoardTimer_Export</name>
+        <duration>158</duration>
+        <rate>
+            <timebase>24</timebase>
+            <ntsc>FALSE</ntsc>
+        </rate>
+        <timecode>
+            <rate>
+                <timebase>24</timebase>
+                <ntsc>FALSE</ntsc>
+            </rate>
+            <string>00:00:00:00</string>
+            <frame>0</frame>
+            <displayformat>NDF</displayformat>
+        </timecode>
+        <media>
+            <video>
+                <format>
+                    <samplecharacteristics>
+                        <rate>
+                            <timebase>24</timebase>
+                            <ntsc>FALSE</ntsc>
+                        </rate>
+                        <width>1920</width>
+                        <height>1080</height>
+                        <anamorphic>FALSE</anamorphic>
+                        <pixelaspectratio>square</pixelaspectratio>
+                        <fielddominance>none</fielddominance>
+                    </samplecharacteristics>
+                </format>
+                <track>
+            <clipitem id="clipitem-0">
+                <masterclipid>seq01_c010-01-1.jpg</masterclipid>
+                <name>seq01_c010-01-1.jpg</name>
+                <enabled>TRUE</enabled>
+                <duration>91</duration>
+                <rate>
+                    <timebase>24</timebase>
+                    <ntsc>FALSE</ntsc>
+                </rate>
+                <start>0</start>
+                <end>91</end>
+                <in>0</in>
+                <out>91</out>
+                <file id="file-0-84f1703e-6808-4163-a66a-a2cf851abad9"/>
+            </clipitem>
+            <clipitem id="clipitem-1">
+                <masterclipid>seq01_c010-02-1.jpg</masterclipid>
+                <name>seq01_c010-02-1.jpg</name>
+                <enabled>TRUE</enabled>
+                <duration>50</duration>
+                <rate>
+                    <timebase>24</timebase>
+                    <ntsc>FALSE</ntsc>
+                </rate>
+                <start>91</start>
+                <end>141</end>
+                <in>0</in>
+                <out>50</out>
+                <file id="file-1-8a222436-8bdb-4777-a1c3-faa7fbc7717a"/>
+            </clipitem>
+            <clipitem id="clipitem-2">
+                <masterclipid>seq01_c010-03-1.jpg</masterclipid>
+                <name>seq01_c010-03-1.jpg</name>
+                <enabled>TRUE</enabled>
+                <duration>17</duration>
+                <rate>
+                    <timebase>24</timebase>
+                    <ntsc>FALSE</ntsc>
+                </rate>
+                <start>141</start>
+                <end>158</end>
+                <in>0</in>
+                <out>17</out>
+                <file id="file-2-86799bc3-d6db-4ed4-9f0c-b9efa113e862"/>
+            </clipitem>
+                </track>
+            </video>
+        </media>
+    </sequence>
+        <file id="file-0-84f1703e-6808-4163-a66a-a2cf851abad9">
+            <name>seq01_c010-01-1.jpg</name>
+            <pathurl>file://localhost/D:/怪怪整理師(WTP)/進度/260122_animatic VO/storyboard/WTP_EP02_seq01/seq01_c010-01-1.jpg</pathurl>
+            <rate>
+                <timebase>24</timebase>
+                <ntsc>FALSE</ntsc>
+            </rate>
+            <duration>91</duration>
+            <media>
+                <video>
+                    <samplecharacteristics>
+                        <rate>
+                            <timebase>24</timebase>
+                            <ntsc>FALSE</ntsc>
+                        </rate>
+                        <width>1920</width>
+                        <height>1080</height>
+                        <anamorphic>FALSE</anamorphic>
+                        <pixelaspectratio>square</pixelaspectratio>
+                        <fielddominance>none</fielddominance>
+                    </samplecharacteristics>
+                </video>
+            </media>
+        </file>
+        <file id="file-1-8a222436-8bdb-4777-a1c3-faa7fbc7717a">
+            <name>seq01_c010-02-1.jpg</name>
+            <pathurl>file://localhost/D:/怪怪整理師(WTP)/進度/260122_animatic VO/storyboard/WTP_EP02_seq01/seq01_c010-02-1.jpg</pathurl>
+            <rate>
+                <timebase>24</timebase>
+                <ntsc>FALSE</ntsc>
+            </rate>
+            <duration>50</duration>
+            <media>
+                <video>
+                    <samplecharacteristics>
+                        <rate>
+                            <timebase>24</timebase>
+                            <ntsc>FALSE</ntsc>
+                        </rate>
+                        <width>1920</width>
+                        <height>1080</height>
+                        <anamorphic>FALSE</anamorphic>
+                        <pixelaspectratio>square</pixelaspectratio>
+                        <fielddominance>none</fielddominance>
+                    </samplecharacteristics>
+                </video>
+            </media>
+        </file>
+        <file id="file-2-86799bc3-d6db-4ed4-9f0c-b9efa113e862">
+            <name>seq01_c010-03-1.jpg</name>
+            <pathurl>file://localhost/D:/怪怪整理師(WTP)/進度/260122_animatic VO/storyboard/WTP_EP02_seq01/seq01_c010-03-1.jpg</pathurl>
+            <rate>
+                <timebase>24</timebase>
+                <ntsc>FALSE</ntsc>
+            </rate>
+            <duration>17</duration>
+            <media>
+                <video>
+                    <samplecharacteristics>
+                        <rate>
+                            <timebase>24</timebase>
+                            <ntsc>FALSE</ntsc>
+                        </rate>
+                        <width>1920</width>
+                        <height>1080</height>
+                        <anamorphic>FALSE</anamorphic>
+                        <pixelaspectratio>square</pixelaspectratio>
+                        <fielddominance>none</fielddominance>
+                    </samplecharacteristics>
+                </video>
+            </media>
+        </file>
+</xmeml>
