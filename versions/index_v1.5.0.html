@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<!-- 
+    BoardTimer v1.3
+    - "Always Centered" Timeline (Padding + JS Calc)
+    - Smooth, Non-Jittery Scrolling
+    - Pro Highlights (Active + Next)
+    - Undo/Redo & Hide/Delete Logic Preserved
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoardTimer</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --sidebar-bg: #252526;
+            --stage-bg: #111111;
+            --strip-bg: #1e1e1e;
+
+            --text-color: #cccccc;
+            --text-muted: #858585;
+
+            --accent-color: #007acc;
+            /* Blue for Playback/Focus */
+            --record-color: #d64a4a;
+            /* Red for Record */
+            --recorded-color: #4CAF50;
+            /* Green for "Has Duration" */
+            --hidden-color: #444444;
+            /* Color for hidden slides */
+
+            --border-color: #3e3e42;
+
+            --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            --font-mono: 'Consolas', 'Monaco', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            /* Sidebar Left Layout */
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- Left Sidebar --- */
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .app-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .app-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .scrollalbe-controls {
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .mode-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+        }
+
+        .mode-status.record {
+            background: rgba(214, 74, 74, 0.2);
+            color: #ff6b6b;
+            border: 1px solid var(--record-color);
+        }
+
+        .mode-status.playback {
+            background: rgba(0, 122, 204, 0.2);
+            color: #6db1ff;
+            border: 1px solid var(--accent-color);
+        }
+
+        .time-widget {
+            background: #000;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: right;
+            border: 1px solid var(--border-color);
+        }
+
+        .time-main {
+            font-family: var(--font-mono);
+            font-size: 28px;
+            color: #fff;
+            display: block;
+        }
+
+        .time-total {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            display: block;
+        }
+
+        input[type="text"],
+        select {
+            background: #3c3c3c;
+            border: 1px solid transparent;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        input:focus {
+            border-color: var(--accent-color);
+            outline: none;
+        }
+
+        .btn {
+            background: #3c3c3c;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.1s;
+        }
+
+        .btn:hover {
+            background: #4a4a4a;
+        }
+
+        .btn-primary {
+            background: #007acc;
+        }
+
+        .btn-primary:hover {
+            background: #0062a3;
+        }
+
+        .btn-group {
+            display: flex;
+            background: #111;
+            border-radius: 4px;
+            padding: 2px;
+        }
+
+        .btn-toggle {
+            flex: 1;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 12px;
+            padding: 6px;
+            border: none;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .btn-toggle.active {
+            background: #444;
+            color: #fff;
+        }
+
+        .help-section {
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .kbd {
+            background: #333;
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: #eee;
+            font-family: monospace;
+        }
+
+        /* --- Main Content --- */
+        .main-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: var(--bg-color);
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .view-header {
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            background: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .view-focus {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .stage {
+            flex-grow: 1;
+            background: var(--stage-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stage img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .stage-hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .hud-label {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+            backdrop-filter: blur(4px);
+        }
+
+        .hud-duration {
+            font-size: 14px;
+            color: #FFD700;
+            /* Gold for high contrast */
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        /* --- Updated Strip for Centering --- */
+        .strip-container {
+            height: 160px;
+            /* Taller for scale effect */
+            background: var(--strip-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .strip-header {
+            padding: 5px 10px;
+            font-size: 10px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .thumbnail-strip {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            gap: 15px;
+            /* Critical Padding for Centering: Approx 50% minus half item width */
+            padding: 0 calc(50% - 80px);
+            scroll-behavior: smooth;
+            /* Native smooth scroll */
+        }
+
+        .thumbnail-strip::-webkit-scrollbar {
+            height: 0px;
+            background: transparent;
+        }
+
+        /* Hidden scrollbar */
+
+        .view-grid {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            grid-auto-rows: min-content;
+            gap: 20px;
+            align-content: start;
+        }
+
+        /* --- Thumb Cards Styles --- */
+        .thumb-card {
+            display: flex;
+            flex-direction: column;
+            background: #252526;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+            transform-origin: center center;
+            opacity: 0.6;
+            transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.2s, opacity 0.2s;
+        }
+
+        .thumb-card.hidden-slide {
+            opacity: 0.25;
+            filter: grayscale(100%);
+        }
+
+        /* Size in Strip vs Grid */
+        .thumbnail-strip .thumb-card {
+            min-width: 160px;
+            height: 100px;
+            flex-shrink: 0;
+            margin-bottom: 5px;
+        }
+
+        .view-grid .thumb-card {
+            height: auto;
+            opacity: 1;
+        }
+
+        /* Active State */
+        .thumb-card.active {
+            border-color: var(--accent-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            transform: scale(1.15);
+            opacity: 1;
+        }
+
+        /* Next State */
+        .thumb-card.next-up {
+            border-color: rgba(255, 255, 255, 0.6);
+            opacity: 1;
+            /* Fully opaque but distinct */
+            transform: scale(1.02);
+            box-shadow: 0 0 10px rgba(0, 122, 204, 0.3);
+            /* Subtle blue glow */
+            z-index: 5;
+        }
+
+        .thumb-img {
+            background: #000;
+            aspect-ratio: 16/9;
+            width: 100%;
+            height: 100%;
+        }
+
+        .thumb-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .thumb-info {
+            padding: 6px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #252526;
+        }
+
+        .thumb-idx {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .thumb-dur {
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+        }
+
+        .thumb-card.has-data .thumb-dur {
+            color: var(--recorded-color);
+            font-weight: bold;
+        }
+
+        .thumb-card.has-data .thumb-idx {
+            color: var(--recorded-color);
+        }
+
+        .thumb-card.hidden-slide .thumb-dur {
+            text-decoration: line-through;
+        }
+
+        .empty-placeholder {
+            margin: auto;
+            border: 2px dashed #444;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #666;
+        }
+
+        .drag-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            background: rgba(0, 122, 204, 0.1);
+            border: 4px dashed var(--accent-color);
+            pointer-events: none;
+            display: none;
+        }
+
+        body.dragging .drag-overlay {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <div class="app-header">
+            <h1 class="app-title">BoardTimer</h1>
+            <span style="font-size:10px; color:#666;">v1.3</span>
+        </div>
+
+        <div class="scrollalbe-controls">
+            <div class="time-widget">
+                <span id="currentTime" class="time-main">0.00s</span>
+                <span id="totalTime" class="time-total">Total: 0.00s</span>
+            </div>
+
+            <div class="panel-section">
+                <label>Mode</label>
+                <div id="modeStatus" class="mode-status record">RECORDING</div>
+                <div class="btn-group">
+                    <button class="btn-toggle active" id="btnRecord" onclick="setWorkMode('record')">Record
+                        (Rec)</button>
+                    <button class="btn-toggle" id="btnPlayback" onclick="setWorkMode('playback')">Playback
+                        (Play)</button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <label>View</label>
+                <div class="btn-group">
+                    <button class="btn-toggle active" id="btnFocus" onclick="setViewMode('focus')">Focus</button>
+                    <button class="btn-toggle" id="btnGrid" onclick="setViewMode('grid')">Grid</button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <label>Project Settings</label>
+                <select id="fpsSelect" onchange="updateFPS()">
+                    <option value="24">24 FPS</option>
+                    <option value="30">30 FPS</option>
+                    <option value="60">60 FPS</option>
+                </select>
+            </div>
+
+            <div class="panel-section">
+                <label>Export XML</label>
+                <input type="text" id="basePath" placeholder="D:\Project\Images\" onchange="saveBasePath()"
+                    title="Local folder path">
+                <button class="btn btn-primary" onclick="exportXML()">Export XML</button>
+                <button class="btn btn-secondary" onclick="exportGridImage()">Export Grid Image</button>
+            </div>
+
+            <div class="panel-section">
+                <button class="btn" onclick="undo()" title="Ctrl+Z">↺ Undo</button>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <div><span class="kbd">Space</span> Play/Pause</div>
+            <div><span class="kbd">Right</span> Next Cut</div>
+            <div><span class="kbd">Left</span> Prev Cut</div>
+            <div><span class="kbd">Bksp</span> Hide/Delete</div>
+            <div><span class="kbd">Ctrl+Z</span> Undo</div>
+            <div><span class="kbd">Ctrl+←/→</span> Reorder</div>
+            <div><span class="kbd">R/T</span> Mode</div>
+            <div><span class="kbd">F/G</span> View</div>
+        </div>
+    </div>
+
+    <div class="main-wrapper" id="mainWrapper">
+        <div class="view-header">
+            <span id="slideCounter">No Slides</span>
+        </div>
+        <div id="contentArea" style="flex-grow:1; display:flex; overflow:hidden;"></div>
+    </div>
+    <div class="drag-overlay"></div>
+
+    <script>
+        // --- State ---
+        let slides = [];
+        let currentIndex = -1;
+        let FPS = 24;
+        let currentView = 'focus';
+        let workMode = 'record';
+
+        // History
+        const historyStack = [];
+        const MAX_HISTORY = 50;
+
+        // Timing
+        let isPlaying = false;
+        let slideStartTime = 0;
+        let accumulatedTime = 0;
+        let animationFrameId;
+
+        // --- DOM ---
+        const contentArea = document.getElementById('contentArea');
+        const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
+        const slideCounterEl = document.getElementById('slideCounter');
+        const modeStatusEl = document.getElementById('modeStatus');
+        const basePathInput = document.getElementById('basePath');
+
+        // --- Init ---
+        if (localStorage.getItem('boardTimerPath')) basePathInput.value = localStorage.getItem('boardTimerPath');
+
+        document.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dragging'); });
+        document.addEventListener('dragleave', e => { if (e.relatedTarget === null) document.body.classList.remove('dragging'); });
+        document.addEventListener('drop', handleDrop);
+        document.addEventListener('keydown', handleKey);
+
+        // --- Undo Logic ---
+        function pushHistory() {
+            if (historyStack.length >= MAX_HISTORY) historyStack.shift();
+            historyStack.push(JSON.stringify(slides));
+        }
+
+        function undo() {
+            if (historyStack.length === 0) return;
+            const prevState = historyStack.pop();
+            slides = JSON.parse(prevState);
+            if (currentIndex >= slides.length) currentIndex = slides.length - 1;
+            restoreAssets();
+            render();
+        }
+
+        const assetCache = new Map();
+
+        function cacheAssets(newSlides) {
+            newSlides.forEach(s => {
+                if (!assetCache.has(s.name)) assetCache.set(s.name, { file: s.file, blobUrl: s.blobUrl });
+            });
+        }
+
+        function restoreAssets() {
+            slides.forEach(s => {
+                if (assetCache.has(s.name)) {
+                    const asset = assetCache.get(s.name);
+                    s.file = asset.file;
+                    s.blobUrl = asset.blobUrl;
+                }
+            });
+        }
+
+        let draggedIndex = -1;
+
+        // --- Drag & Drop (Sort) ---
+        function onDragStart(e, index) {
+            draggedIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            // Optional: Set ghost image
+        }
+
+        function onDragOver(e) {
+            e.preventDefault(); // Necessary for drop to fire
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function onDropSort(e, targetIndex) {
+            e.preventDefault();
+            if (draggedIndex === -1 || draggedIndex === targetIndex) return;
+
+            pushHistory();
+
+            // Move slide
+            const item = slides[draggedIndex];
+            slides.splice(draggedIndex, 1);
+            slides.splice(targetIndex, 0, item);
+
+            // Update selection to follow the moved item or stay intuitive
+            // If moved item was active, keep it active (update index)
+            if (currentIndex === draggedIndex) {
+                currentIndex = targetIndex;
+            } else if (currentIndex > draggedIndex && currentIndex <= targetIndex) {
+                currentIndex--;
+            } else if (currentIndex < draggedIndex && currentIndex >= targetIndex) {
+                currentIndex++;
+            }
+
+            render();
+            // Scroll to new position if needed
+            if (currentView === 'focus') setTimeout(scrollToActive, 0);
+
+            draggedIndex = -1;
+        }
+
+        // --- Drag & Drop (Import) ---
+        function handleDrop(e) {
+            e.preventDefault();
+            document.body.classList.remove('dragging');
+
+            let items = Array.from(e.dataTransfer.files);
+            const imageFiles = items.filter(f => f.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name));
+
+            if (imageFiles.length === 0) {
+                alert("No images found!");
+                return;
+            }
+
+            pushHistory();
+            imageFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+            imageFiles.forEach(file => {
+                const blobUrl = URL.createObjectURL(file);
+                const s = { name: file.name, file: file, blobUrl: blobUrl, duration: 0.0, hidden: false };
+                slides.push(s);
+                assetCache.set(s.name, { file, blobUrl });
+            });
+
+            if (currentIndex === -1 && slides.length > 0) selectSlide(0);
+            else render();
+        }
+
+        // --- Timer Engine ---
+        function startTimer() {
+            if (slides.length === 0) return;
+            if (isPlaying) return;
+
+            if (slides[currentIndex] && (slides[currentIndex].hidden)) {
+                nextSlide(true);
+                return;
+            }
+
+            isPlaying = true;
+            slideStartTime = Date.now();
+            loop();
+        }
+
+        function stopTimer() {
+            if (!isPlaying) return;
+            isPlaying = false;
+            cancelAnimationFrame(animationFrameId);
+
+            if (workMode === 'record' && currentIndex !== -1 && !slides[currentIndex].hidden) {
+                const now = Date.now();
+                accumulatedTime += (now - slideStartTime) / 1000;
+            }
+            render();
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopTimer();
+            else startTimer();
+        }
+
+        function loop() {
+            if (!isPlaying) return;
+
+            const now = Date.now();
+            const delta = (now - slideStartTime) / 1000;
+            const currentActiveDuration = accumulatedTime + delta;
+
+            // Visual Update
+            currentTimeEl.textContent = formatTime(currentActiveDuration);
+
+            // Auto Advance Logic (Recursion Fix applied previously)
+            if (workMode === 'playback' && currentIndex !== -1) {
+                // Enhancement: Stop playback if current slide has no recorded duration
+                if (slides[currentIndex].duration <= 0) {
+                    stopTimer();
+                    return;
+                }
+
+                const target = slides[currentIndex].duration;
+
+                if (currentActiveDuration >= target) {
+                    nextSlide(true);
+                    if (!isPlaying) return;
+                }
+            }
+            animationFrameId = requestAnimationFrame(loop);
+        }
+
+        // --- Navigation ---
+        function nextSlide(autoAdvance = false) {
+            if (slides.length === 0) return;
+
+            // 1. Commit Duration
+            if (workMode === 'record' && isPlaying && !slides[currentIndex].hidden) {
+                // FEATURE: Undo support for recording duration
+                pushHistory();
+                const now = Date.now();
+                const totalDur = accumulatedTime + (now - slideStartTime) / 1000;
+                slides[currentIndex].duration = Math.max(0.1, totalDur);
+            }
+
+            // 2. Find Next
+            let tempIndex = currentIndex + 1;
+
+            // In Focus/Record/Playback, we skip hidden slides. 
+            // In Grid View, we allow selecting them.
+            if (currentView === 'focus') {
+                while (tempIndex < slides.length && slides[tempIndex].hidden) {
+                    tempIndex++;
+                }
+            }
+
+            if (tempIndex < slides.length) {
+                selectSlide(tempIndex);
+
+                if (isPlaying) {
+                    accumulatedTime = 0;
+                    slideStartTime = Date.now();
+                } else {
+                    accumulatedTime = 0;
+                    currentTimeEl.textContent = formatTime(0);
+                }
+            } else {
+                stopTimer();
+            }
+        }
+
+        function prevSlide() {
+            let tempIndex = currentIndex - 1;
+
+            if (currentView === 'focus') {
+                while (tempIndex >= 0 && slides[tempIndex].hidden) {
+                    tempIndex--;
+                }
+            }
+
+            if (tempIndex >= 0) {
+                selectSlide(tempIndex);
+                accumulatedTime = 0;
+                if (isPlaying) {
+                    slideStartTime = Date.now();
+                } else {
+                    currentTimeEl.textContent = formatTime(0);
+                }
+            }
+        }
+
+        function selectSlide(index) {
+            currentIndex = index;
+            render();
+
+            // --- Center Scroll Logic ---
+            setTimeout(scrollToActive, 0);
+        }
+
+        function scrollToActive() {
+            const activeEl = document.querySelector(`.thumb-card.active`);
+            const strip = document.querySelector('.thumbnail-strip');
+            if (activeEl && strip) {
+                // Calculate Exact Center Position
+                const scrollLeft = activeEl.offsetLeft - (strip.offsetWidth / 2) + (activeEl.offsetWidth / 2);
+
+                strip.scrollTo({
+                    left: scrollLeft,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+
+        // --- Edit Logic ---
+        function handleBackspace() {
+            if (currentIndex === -1) return;
+            pushHistory();
+
+            const slide = slides[currentIndex];
+            if (!slide.hidden) {
+                slide.hidden = true;
+                nextSlide(false);
+            } else {
+                slides.splice(currentIndex, 1);
+                if (slides.length === 0) currentIndex = -1;
+                else if (currentIndex >= slides.length) currentIndex = slides.length - 1;
+                stopTimer();
+                render();
+            }
+        }
+
+        // --- Helpers ---
+        function formatTime(sec) {
+            if (sec < 0) sec = 0;
+            const s = Math.floor(sec);
+            const f = Math.floor((sec - s) * FPS);
+            return `${s}s ${f.toString().padStart(2, '0')}`;
+        }
+
+        function updateFPS() {
+            FPS = parseInt(document.getElementById('fpsSelect').value);
+            render();
+        }
+
+        function saveBasePath() {
+            localStorage.setItem('boardTimerPath', basePathInput.value);
+        }
+
+        function setWorkMode(mode) {
+            workMode = mode;
+            const statusEl = document.getElementById('modeStatus');
+            const btnRec = document.getElementById('btnRecord');
+            const btnPlay = document.getElementById('btnPlayback');
+
+            btnRec.classList.toggle('active', mode === 'record');
+            btnPlay.classList.toggle('active', mode === 'playback');
+
+            if (mode === 'record') {
+                statusEl.textContent = 'RECORDING';
+                statusEl.className = 'mode-status record';
+            } else {
+                statusEl.textContent = 'PLAYBACK';
+                statusEl.className = 'mode-status playback';
+                stopTimer();
+                accumulatedTime = 0;
+                currentTimeEl.textContent = formatTime(0);
+            }
+        }
+
+        function setViewMode(mode) {
+            currentView = mode;
+            const btnFocus = document.getElementById('btnFocus');
+            const btnGrid = document.getElementById('btnGrid');
+            btnFocus.classList.toggle('active', mode === 'focus');
+            btnGrid.classList.toggle('active', mode === 'grid');
+            render();
+            if (mode === 'focus' && slides[currentIndex] && slides[currentIndex].hidden) {
+                nextSlide(false);
+            }
+        }
+
+        function handleKey(e) {
+            if (e.target.tagName === 'INPUT') return;
+
+            if (e.ctrlKey && e.code === 'KeyZ') {
+                e.preventDefault();
+                undo();
+                return;
+            }
+
+            // Ctrl+Arrow: Reorder slides
+            if (e.ctrlKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+                e.preventDefault();
+                const direction = e.code === 'ArrowLeft' ? -1 : 1;
+                moveSlide(direction);
+                return;
+            }
+
+            switch (e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        // FEATURE: Shift+Space -> Playback & Start
+                        setWorkMode('playback');
+                        startTimer();
+                    } else {
+                        togglePlay();
+                    }
+                    break;
+                case 'ArrowRight':
+                case 'Enter':
+                    e.preventDefault();
+                    if (workMode === 'playback' && isPlaying) return;
+                    nextSlide();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (workMode === 'playback' && isPlaying) return;
+                    prevSlide();
+                    break;
+                case 'Backspace': e.preventDefault(); handleBackspace(); break;
+                case 'KeyF': e.preventDefault(); setViewMode('focus'); break;
+                case 'KeyG': e.preventDefault(); setViewMode('grid'); break;
+                case 'KeyR': e.preventDefault(); setWorkMode('record'); break;
+                case 'KeyT': e.preventDefault(); setWorkMode('playback'); break;
+                // Grid Navigation
+                case 'ArrowUp':
+                    if (currentView === 'grid') { e.preventDefault(); moveGrid(-1); }
+                    break;
+                case 'ArrowDown':
+                    if (currentView === 'grid') { e.preventDefault(); moveGrid(1); }
+                    break;
+            }
+        }
+
+        function moveGrid(direction) {
+            const grid = document.querySelector('.view-grid');
+            if (!grid || slides.length === 0) return;
+
+            // Robust Column Counting using position
+            const cards = Array.from(grid.querySelectorAll('.thumb-card'));
+            if (cards.length < 2) return; // Can't move up/down if only 1 item
+
+            const firstTop = cards[0].getBoundingClientRect().top;
+            let cols = 0;
+            for (const c of cards) {
+                if (Math.abs(c.getBoundingClientRect().top - firstTop) < 10) cols++;
+                else break;
+            }
+
+            if (cols < 1) cols = 1;
+
+            let newIndex = currentIndex + (direction * cols);
+            if (newIndex < 0) newIndex = 0;
+            if (newIndex >= slides.length) newIndex = slides.length - 1;
+
+            // In Grid, we just select, we don't worry about hidden skipping for navigation mainly
+            // User requested moving, so we select whatever is there.
+            selectSlide(newIndex);
+        }
+
+        // --- Rendering ---
+        function render() {
+            if (slides.length > 0) {
+                if (currentIndex >= slides.length) currentIndex = slides.length - 1;
+                if (currentIndex < 0) currentIndex = 0;
+            }
+
+            const visibleSlides = slides.filter(s => !s.hidden);
+            const total = slides.reduce((acc, s) => acc + (s.hidden ? 0 : s.duration), 0);
+
+            if (slides.length > 0) {
+                const visibleIndex = Number(visibleSlides.indexOf(slides[currentIndex])) + 1;
+                slideCounterEl.textContent = `Slide ${visibleIndex > 0 ? visibleIndex : '-'} / ${visibleSlides.length} (Hidden: ${slides.length - visibleSlides.length})`;
+                totalTimeEl.textContent = `Total: ${formatTime(total)}`;
+            } else {
+                slideCounterEl.textContent = 'No Slides';
+                totalTimeEl.textContent = 'Total: 0.00s';
+            }
+
+            if (slides.length === 0) {
+                contentArea.innerHTML = `<div class="empty-placeholder">Drag & Drop Storyboard Images Here</div>`;
+                return;
+            }
+
+            if (currentView === 'grid') {
+                renderGrid();
+            } else {
+                renderFocus();
+            }
+        }
+
+        function renderFocus() {
+            const slide = slides[currentIndex];
+            if (!slide) return; // Safety
+
+            const isRecorded = slide.duration > 0;
+            const isHidden = slide.hidden;
+
+            // 1. Stage (Always Generate String)
+            // Fix: We must always generate the HTML string because if needsFullRebuild is true, we need it.
+            // checking document.querySelector('.view-focus') is only useful for skipping innerHTML update in DOM preservation mode,
+            // but here we are preparing variables. 
+
+            const stageHtml = `
+                <div class="stage" style="${isHidden ? 'filter:grayscale(100%); opacity:0.3;' : ''}">
+                    <img src="${slide.blobUrl}">
+                    <div class="stage-hud">
+                        <div class="hud-label">${slide.name} ${isHidden ? '(HIDDEN)' : ''}</div>
+                        ${isRecorded && !isHidden ? `<div class="hud-label hud-duration">${formatTime(slide.duration)}</div>` : ''}
+                    </div>
+                </div>`;
+
+            // 2. Strip - THE CRITICAL JITTER FIX
+            // We check if the strip container exists and has the correct number of children.
+            let stripContainer = document.querySelector('.strip-container');
+            let strip = document.querySelector('.thumbnail-strip');
+
+            const needsFullRebuild = !strip || strip.children.length !== slides.length;
+
+            if (needsFullRebuild) {
+                // Build HTML string
+                const stripItems = slides.map((s, i) => {
+                    const isActive = i === currentIndex;
+                    const isNext = i === currentIndex + 1;
+                    const hasData = s.duration > 0;
+                    return `
+                    <div class="thumb-card ${isActive ? 'active' : ''} ${isNext ? 'next-up' : ''} ${hasData ? 'has-data' : ''} ${s.hidden ? 'hidden-slide' : ''}" 
+                         data-index="${i}" id="thumb-${i}">
+                        <div class="thumb-img">
+                            <img src="${s.blobUrl}">
+                        </div>
+                    </div>
+                `;
+                }).join('');
+
+                const fullHtml = `
+                <div class="view-focus">
+                    <div id="stage-wrapper">${stageHtml}</div>
+                    <div class="strip-container">
+                        <div class="strip-header"><span>TIMELINE</span></div>
+                        <div class="thumbnail-strip">
+                            ${stripItems}
+                        </div>
+                    </div>
+                </div>`;
+
+                contentArea.innerHTML = fullHtml;
+
+                // Attach drag-drop event listeners
+                attachDragListeners();
+
+                // BUG FIX: When rebuilding view (e.g., F -> G -> F), ensure we scroll to active
+                setTimeout(scrollToActive, 0);
+
+            } else {
+                // DOM Preservation Mode!
+                // 1. Update Stage
+                const stageWrapper = document.getElementById('stage-wrapper');
+                if (stageWrapper) stageWrapper.innerHTML = stageHtml;
+
+                // 2. Update Strip Classes
+                Array.from(strip.children).forEach((el, i) => {
+                    const s = slides[i];
+                    const isActive = i === currentIndex;
+                    const isNext = i === currentIndex + 1;
+                    const hasData = s.duration > 0;
+
+                    // Efficient class update
+                    // Drag events already attached, just update classes
+
+                    el.classList.toggle('active', isActive);
+                    el.classList.toggle('next-up', isNext);
+                    el.classList.toggle('has-data', hasData);
+                    el.classList.toggle('hidden-slide', s.hidden);
+                });
+            }
+        }
+
+        function renderGrid() {
+            const gridItems = slides.map((s, i) => {
+                const isActive = i === currentIndex;
+                const hasData = s.duration > 0;
+                return `
+                <div class="thumb-card ${isActive ? 'active' : ''} ${hasData ? 'has-data' : ''} ${s.hidden ? 'hidden-slide' : ''}" 
+                     data-index="${i}">
+                    <div class="thumb-img" style="height:100px;">
+                        <img src="${s.blobUrl}">
+                    </div>
+                    <div class="thumb-info">
+                        <span class="thumb-idx">#${i + 1}</span>
+                        <span class="thumb-dur">${s.hidden ? 'HIDDEN' : (hasData ? formatTime(s.duration) : '--')}</span>
+                    </div>
+                </div>
+            `;
+            }).join('');
+
+            contentArea.innerHTML = `<div class="view-grid">${gridItems}</div>`;
+            attachDragListeners();
+        }
+
+        // Attach drag-drop event listeners to all thumb-cards
+        function attachDragListeners() {
+            document.querySelectorAll('.thumb-card').forEach(card => {
+                const index = parseInt(card.dataset.index);
+
+                card.draggable = true;
+                card.addEventListener('click', () => selectSlide(index));
+                card.addEventListener('dragstart', (e) => onDragStart(e, index));
+                card.addEventListener('dragover', onDragOver);
+                card.addEventListener('drop', (e) => onDropSort(e, index));
+            });
+        }
+
+        // --- Keyboard Reordering ---
+        function moveSlide(direction) {
+            if (currentIndex === -1 || slides.length < 2) return;
+
+            const newIndex = currentIndex + direction;
+            if (newIndex < 0 || newIndex >= slides.length) return;
+
+            pushHistory();
+
+            // Swap slides
+            const temp = slides[currentIndex];
+            slides[currentIndex] = slides[newIndex];
+            slides[newIndex] = temp;
+
+            currentIndex = newIndex;
+            render();
+            if (currentView === 'focus') setTimeout(scrollToActive, 0);
+        }
+
+        // --- Export Helpers ---
+        function escapeXML(str) {
+            return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // --- Export ---
+        function exportXML() {
+            if (slides.length === 0) return alert("Nothing to export");
+            let basePath = document.getElementById('basePath').value.trim();
+            if (basePath && !basePath.endsWith('\\') && !basePath.endsWith('/')) basePath += '\\';
+
+            const exportSlides = slides.filter(s => !s.hidden && s.duration > 0);
+            if (exportSlides.length === 0) return alert("No recorded, visible slides to export!");
+
+            const sequenceId = generateUUID();
+            let curFrame = 0;
+            let trackItems = '';
+            let fileItems = '';
+
+            exportSlides.forEach((s, i) => {
+                const frames = Math.round(s.duration * FPS);
+                const cleanPath = basePath ? basePath.replace(/\\/g, '/') : '';
+                const pathUrl = `file://localhost/${cleanPath}${escapeXML(s.name)}`;
+                const fileId = `file-${i}-${generateUUID()}`;
+                const escapedName = escapeXML(s.name);
+
+                // Build File entry with complete media structure
+                fileItems += `
+        <file id="${fileId}">
+            <name>${escapedName}</name>
+            <pathurl>${pathUrl}</pathurl>
+            <rate>
+                <timebase>${FPS}</timebase>
+                <ntsc>FALSE</ntsc>
+            </rate>
+            <duration>${frames}</duration>
+            <media>
+                <video>
+                    <samplecharacteristics>
+                        <rate>
+                            <timebase>${FPS}</timebase>
+                            <ntsc>FALSE</ntsc>
+                        </rate>
+                        <width>1920</width>
+                        <height>1080</height>
+                        <anamorphic>FALSE</anamorphic>
+                        <pixelaspectratio>square</pixelaspectratio>
+                        <fielddominance>none</fielddominance>
+                    </samplecharacteristics>
+                </video>
+            </media>
+        </file>`;
+
+                // Build Clip item
+                trackItems += `
+            <clipitem id="clipitem-${i}">
+                <masterclipid>${escapedName}</masterclipid>
+                <name>${escapedName}</name>
+                <enabled>TRUE</enabled>
+                <duration>${frames}</duration>
+                <rate>
+                    <timebase>${FPS}</timebase>
+                    <ntsc>FALSE</ntsc>
+                </rate>
+                <start>${curFrame}</start>
+                <end>${curFrame + frames}</end>
+                <in>0</in>
+                <out>${frames}</out>
+                <file id="${fileId}"/>
+            </clipitem>`;
+                curFrame += frames;
+            });
+
+            const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<xmeml version="5">
+    <sequence id="${sequenceId}">
+        <name>BoardTimer_Export</name>
+        <duration>${curFrame}</duration>
+        <rate>
+            <timebase>${FPS}</timebase>
+            <ntsc>FALSE</ntsc>
+        </rate>
+        <timecode>
+            <rate>
+                <timebase>${FPS}</timebase>
+                <ntsc>FALSE</ntsc>
+            </rate>
+            <string>00:00:00:00</string>
+            <frame>0</frame>
+            <displayformat>NDF</displayformat>
+        </timecode>
+        <media>
+            <video>
+                <format>
+                    <samplecharacteristics>
+                        <rate>
+                            <timebase>${FPS}</timebase>
+                            <ntsc>FALSE</ntsc>
+                        </rate>
+                        <width>1920</width>
+                        <height>1080</height>
+                        <anamorphic>FALSE</anamorphic>
+                        <pixelaspectratio>square</pixelaspectratio>
+                        <fielddominance>none</fielddominance>
+                    </samplecharacteristics>
+                </format>
+                <track>${trackItems}
+                </track>
+            </video>
+        </media>
+    </sequence>${fileItems}
+</xmeml>`;
+
+            const blob = new Blob([xml], { type: 'text/xml' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `BoardTimer_${Date.now()}.xml`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Export Grid Image ---
+        function exportGridImage() {
+            if (slides.length === 0) return alert("No slides to export");
+
+            const visibleSlides = slides.filter(s => !s.hidden);
+            if (visibleSlides.length === 0) return alert("No visible slides to export");
+
+            // Calculate grid layout
+            const cols = 4;
+            const rows = Math.ceil(visibleSlides.length / cols);
+            const cellWidth = 300;
+            const cellHeight = 220;
+            const padding = 20;
+
+            const canvasWidth = cols * cellWidth + (cols + 1) * padding;
+            const canvasHeight = rows * cellHeight + (rows + 1) * padding + 60; // Extra for title
+
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            const ctx = canvas.getContext('2d');
+
+            // Background
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            // Title
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('BoardTimer Export', canvasWidth / 2, 40);
+
+            // Draw each slide
+            let promises = [];
+            visibleSlides.forEach((s, i) => {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = padding + col * (cellWidth + padding);
+                const y = 60 + padding + row * (cellHeight + padding);
+
+                // Cell background
+                ctx.fillStyle = '#2a2a2a';
+                ctx.fillRect(x, y, cellWidth, cellHeight);
+
+                // Load and draw image
+                const promise = new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Draw image (maintain aspect ratio)
+                        const imgHeight = 150;
+                        const imgWidth = cellWidth - 20;
+                        ctx.drawImage(img, x + 10, y + 10, imgWidth, imgHeight);
+
+                        // Draw slide info
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 16px Arial';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(`#${i + 1}`, x + 10, y + cellHeight - 40);
+
+                        ctx.font = '14px Arial';
+                        ctx.fillStyle = '#aaaaaa';
+                        const duration = s.duration > 0 ? formatTime(s.duration) : '--';
+                        ctx.fillText(duration, x + 10, y + cellHeight - 15);
+
+                        // File name (truncated)
+                        ctx.fillStyle = '#888888';
+                        ctx.font = '12px Arial';
+                        const name = s.name.length > 30 ? s.name.substring(0, 27) + '...' : s.name;
+                        ctx.fillText(name, x + cellWidth - 10, y + cellHeight - 15);
+                        ctx.textAlign = 'left';
+
+                        resolve();
+                    };
+                    img.src = s.blobUrl;
+                });
+                promises.push(promise);
+            });
+
+            // Wait for all images to load, then export
+            Promise.all(promises).then(() => {
+                canvas.toBlob((blob) => {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `BoardTimer_Grid_${Date.now()}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+            });
+        }
+
+        // --- Event Listeners Initialization ---
+        document.body.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            document.body.classList.add('dragging');
+        });
+
+        document.body.addEventListener('dragleave', (e) => {
+            if (e.target === document.body) {
+                document.body.classList.remove('dragging');
+            }
+        });
+
+        document.body.addEventListener('drop', handleDrop);
+        document.addEventListener('keydown', handleKey);
+
+        // Load saved base path
+        const savedPath = localStorage.getItem('boardTimer_basePath');
+        if (savedPath) {
+            document.getElementById('basePath').value = savedPath;
+        }
+
+        render();
+    </script>
+</body>
+
+</html>
